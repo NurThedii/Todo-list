@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:todolist_flutter/models/category.dart';
+import 'package:todolist_flutter/models/label.dart';
+import 'package:todolist_flutter/models/todo.dart';
 import '../providers/todo_provider.dart';
 import '../providers/category_provider.dart';
 import '../providers/label_provider.dart';
@@ -12,6 +15,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0; // Indeks tab yang aktif
   String searchQuery = "";
+
   @override
   void initState() {
     super.initState();
@@ -91,16 +95,136 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text("Deadline: ${todo.deadline}"),
                   ],
                 ),
-                trailing: IconButton(
-                  icon: Icon(Icons.delete, color: Colors.red),
-                  onPressed:
-                      () => _showDeleteDialog(
-                        () => todoProvider.deleteTodo(todo.id),
-                      ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.edit, color: Colors.blue),
+                      onPressed: () => _showEditTodoDialog(todo),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete, color: Colors.red),
+                      onPressed:
+                          () => _showDeleteDialog(
+                            () => todoProvider.deleteTodo(todo.id),
+                          ),
+                    ),
+                  ],
                 ),
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  // ==============================
+  // MODAL EDIT TODO
+  // ==============================
+  void _showEditTodoDialog(Todo todo) {
+    final TextEditingController _titleController = TextEditingController(
+      text: todo.title,
+    );
+    final TextEditingController _descriptionController = TextEditingController(
+      text: todo.description,
+    );
+    final TextEditingController _deadlineController = TextEditingController(
+      text: todo.deadline,
+    );
+
+    String _selectedCategory = todo.category.id.toString();
+    String _selectedLabel = todo.label.id.toString();
+    String _selectedStatus = todo.status;
+
+    final categoryProvider = Provider.of<CategoryProvider>(
+      context,
+      listen: false,
+    );
+    final labelProvider = Provider.of<LabelProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Edit Todo"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _titleController,
+                  decoration: InputDecoration(labelText: "Nama Todo"),
+                ),
+                TextField(
+                  controller: _descriptionController,
+                  decoration: InputDecoration(labelText: "Deskripsi"),
+                ),
+                DropdownButtonFormField<String>(
+                  value: _selectedCategory,
+                  items:
+                      categoryProvider.categories.map((category) {
+                        return DropdownMenuItem(
+                          value: category.id.toString(),
+                          child: Text(category.title),
+                        );
+                      }).toList(),
+                  onChanged: (value) => _selectedCategory = value!,
+                ),
+                DropdownButtonFormField<String>(
+                  value: _selectedLabel,
+                  items:
+                      labelProvider.labels.map((label) {
+                        return DropdownMenuItem(
+                          value: label.id.toString(),
+                          child: Text(label.title),
+                        );
+                      }).toList(),
+                  onChanged: (value) => _selectedLabel = value!,
+                ),
+                DropdownButtonFormField<String>(
+                  value: _selectedStatus,
+                  items:
+                      ['rendah', 'sedang', 'tinggi'].map((status) {
+                        return DropdownMenuItem(
+                          value: status,
+                          child: Text(status),
+                        );
+                      }).toList(),
+                  onChanged: (value) => _selectedStatus = value!,
+                ),
+                TextField(
+                  controller: _deadlineController,
+                  decoration: InputDecoration(
+                    labelText: "Deadline (YYYY-MM-DD)",
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: Text("Batal"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: Text("Simpan"),
+              onPressed: () {
+                Provider.of<TodoProvider>(
+                  context,
+                  listen: false,
+                ).updateTodo(todo.id, {
+                  "title": _titleController.text.trim(),
+                  "description": _descriptionController.text.trim(),
+                  "category_id": _selectedCategory,
+                  "label_id": _selectedLabel,
+                  "status": _selectedStatus,
+                  "deadline": _deadlineController.text.trim(),
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
         );
       },
     );
@@ -124,8 +248,49 @@ class _HomeScreenState extends State<HomeScreen> {
               () => _showDeleteDialog(
                 () => categoryProvider.deleteCategory(category.id),
               ),
+              onEdit: () => _showEditCategoryDialog(category),
             );
           },
+        );
+      },
+    );
+  }
+
+  // ==============================
+  // MODAL EDIT CATEGORY
+  // ==============================
+  void _showEditCategoryDialog(Category category) {
+    final TextEditingController _controller = TextEditingController(
+      text: category.title,
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Edit Category"),
+          content: TextField(
+            controller: _controller,
+            decoration: InputDecoration(labelText: "Nama Category"),
+          ),
+          actions: [
+            TextButton(
+              child: Text("Batal"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: Text("Simpan"),
+              onPressed: () {
+                Provider.of<CategoryProvider>(
+                  context,
+                  listen: false,
+                ).updateCategory(category.id as String, {
+                  "title": _controller.text.trim(),
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
         );
       },
     );
@@ -148,6 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
               label.title,
               () =>
                   _showDeleteDialog(() => labelProvider.deleteLabel(label.id)),
+              onEdit: () => _showEditLabelDialog(label),
             );
           },
         );
@@ -156,16 +322,68 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==============================
+  // MODAL EDIT LABEL
+  // ==============================
+  void _showEditLabelDialog(Label label) {
+    final TextEditingController _controller = TextEditingController(
+      text: label.title,
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Edit Label"),
+          content: TextField(
+            controller: _controller,
+            decoration: InputDecoration(labelText: "Nama Label"),
+          ),
+          actions: [
+            TextButton(
+              child: Text("Batal"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: Text("Simpan"),
+              onPressed: () {
+                Provider.of<LabelProvider>(
+                  context,
+                  listen: false,
+                ).updateLabel(label.id as String, {"title": _controller.text.trim()});
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ==============================
   // WIDGET LIST ITEM
   // ==============================
-  Widget _buildListItem(String title, VoidCallback onDelete) {
+  Widget _buildListItem(
+    String title,
+    VoidCallback onDelete, {
+    VoidCallback? onEdit,
+  }) {
     return Card(
       margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
       child: ListTile(
         title: Text(title),
-        trailing: IconButton(
-          icon: Icon(Icons.delete, color: Colors.red),
-          onPressed: onDelete,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onEdit != null)
+              IconButton(
+                icon: Icon(Icons.edit, color: Colors.blue),
+                onPressed: onEdit,
+              ),
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.red),
+              onPressed: onDelete,
+            ),
+          ],
         ),
       ),
     );

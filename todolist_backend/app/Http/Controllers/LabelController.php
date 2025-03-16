@@ -34,13 +34,10 @@ class LabelController extends Controller
     public function update(Request $request, $id)
     {
         $label = Label::findOrFail($id);
-
-        $validatedData = $request->validate([
-            'title' => 'required|string|max:255|unique:labels,title,' . $id,
-        ]);
-
         // Update hanya jika data valid
-        $label->update($validatedData);
+        $label->update([
+            'title' => 'required',
+        ]);
 
         // Return response JSON dengan data yang telah diperbarui
         return response()->json([

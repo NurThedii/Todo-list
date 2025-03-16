@@ -44,16 +44,12 @@ class TodoController extends Controller
 
     public function update(Request $request, Todo $todo)
     {
-        $request->validate([
-            'title' => 'required',
-            'category_id' => 'required|exists:categories,id',
-            'label_id' => 'required|exists:categories,id',
-            'status' => 'required|in:rendah,sedang,tinggi',
-            'deadline' => 'required',
-        ]);
+        $todo->update($request->only(['title', 'description', 'category_id', 'label_id', 'status', 'deadline']));
 
-        $todo->update($request->all());
-        return response()->json($todo);
+        return response()->json([
+            'message' => 'Todo berhasil diperbarui',
+            'data' => $todo
+        ], 200);
     }
 
     public function destroy(Todo $todo)
