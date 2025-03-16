@@ -210,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     String? _selectedCategory;
     String? _selectedLabel;
-    String _selectedStatus = "rendah";
+    String _selectedStatus = "rendah"; // Default status
 
     final categoryProvider = Provider.of<CategoryProvider>(
       context,
@@ -218,135 +218,103 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     final labelProvider = Provider.of<LabelProvider>(context, listen: false);
 
-    if (categoryProvider.categories.isNotEmpty) {
-      _selectedCategory = categoryProvider.categories.first.id.toString();
-    }
-    if (labelProvider.labels.isNotEmpty) {
-      _selectedLabel = labelProvider.labels.first.id.toString();
-    }
-
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text("Tambah Todo"),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: _titleController,
-                      decoration: InputDecoration(labelText: "Nama Todo"),
-                    ),
-                    TextField(
-                      controller: _descriptionController,
-                      decoration: InputDecoration(labelText: "Deskripsi"),
-                    ),
-                    DropdownButtonFormField<String>(
-                      decoration: InputDecoration(labelText: "Pilih Kategori"),
-                      value: _selectedCategory,
-                      items:
-                          categoryProvider.categories.map((category) {
-                            return DropdownMenuItem(
-                              value: category.id.toString(),
-                              child: Text(category.title),
-                            );
-                          }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedCategory = value;
-                        });
-                      },
-                    ),
-                    DropdownButtonFormField<String>(
-                      decoration: InputDecoration(labelText: "Pilih Label"),
-                      value: _selectedLabel,
-                      items:
-                          labelProvider.labels.map((label) {
-                            return DropdownMenuItem(
-                              value: label.id.toString(),
-                              child: Text(label.title),
-                            );
-                          }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedLabel = value;
-                        });
-                      },
-                    ),
-                    DropdownButtonFormField<String>(
-                      decoration: InputDecoration(labelText: "Status"),
-                      value: _selectedStatus,
-                      items:
-                          ['rendah', 'sedang', 'tinggi'].map((status) {
-                            return DropdownMenuItem(
-                              value: status,
-                              child: Text(status),
-                            );
-                          }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedStatus = value!;
-                        });
-                      },
-                    ),
-                    TextField(
-                      controller: _deadlineController,
-                      decoration: InputDecoration(
-                        labelText: "Deadline (YYYY-MM-DD)",
-                      ),
-                    ),
-                  ],
+        return AlertDialog(
+          title: Text("Tambah Todo"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _titleController,
+                  decoration: InputDecoration(labelText: "Nama Todo"),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  child: Text("Batal"),
-                  onPressed: () => Navigator.of(context).pop(),
+                TextField(
+                  controller: _descriptionController,
+                  decoration: InputDecoration(labelText: "Deskripsi"),
                 ),
-                ElevatedButton(
-                  child: Text("Tambah"),
-                  onPressed: () {
-                    final String title = _titleController.text.trim();
-                    final String description =
-                        _descriptionController.text.trim();
-                    final String deadline = _deadlineController.text.trim();
-
-                    if (title.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Nama Todo tidak boleh kosong")),
-                      );
-                      return;
-                    }
-
-                    if (_selectedCategory == null || _selectedLabel == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text("Kategori dan Label harus dipilih"),
-                        ),
-                      );
-                      return;
-                    }
-
-                    Provider.of<TodoProvider>(context, listen: false).addTodo({
-                      "title": title,
-                      "description": description,
-                      "category_id": int.tryParse(
-                        _selectedCategory!,
-                      ), // ✅ Konversi ke int dengan fallback 0
-                      "label_id": int.tryParse(_selectedLabel!),
-                      "status": _selectedStatus,
-                      if (deadline.isNotEmpty) "deadline": deadline,
-                    });
-
-                    Navigator.of(context).pop();
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(labelText: "Pilih Kategori"),
+                  value: _selectedCategory,
+                  items:
+                      categoryProvider.categories.map((category) {
+                        return DropdownMenuItem(
+                          value: category.id.toString(),
+                          child: Text(category.title),
+                        );
+                      }).toList(),
+                  onChanged: (value) {
+                    _selectedCategory = value;
                   },
                 ),
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(labelText: "Pilih Label"),
+                  value: _selectedLabel,
+                  items:
+                      labelProvider.labels.map((label) {
+                        return DropdownMenuItem(
+                          value: label.id.toString(),
+                          child: Text(label.title),
+                        );
+                      }).toList(),
+                  onChanged: (value) {
+                    _selectedLabel = value;
+                  },
+                ),
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(labelText: "Status"),
+                  value: _selectedStatus,
+                  items:
+                      ['rendah', 'sedang', 'tinggi'].map((status) {
+                        return DropdownMenuItem(
+                          value: status,
+                          child: Text(status),
+                        );
+                      }).toList(),
+                  onChanged: (value) {
+                    _selectedStatus = value!;
+                  },
+                ),
+                TextField(
+                  controller: _deadlineController,
+                  decoration: InputDecoration(
+                    labelText: "Deadline (YYYY-MM-DD)",
+                  ),
+                ),
               ],
-            );
-          },
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: Text("Batal"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: Text("Tambah"),
+              onPressed: () {
+                final String title = _titleController.text.trim();
+                final String description = _descriptionController.text.trim();
+                final String deadline = _deadlineController.text.trim();
+
+                if (title.isNotEmpty &&
+                    _selectedCategory != null &&
+                    _selectedLabel != null) {
+                  Provider.of<TodoProvider>(context, listen: false).addTodo({
+                    "title": title,
+                    "description": description,
+                    "category_id": _selectedCategory,
+                    "label_id": _selectedLabel,
+                    "status": _selectedStatus,
+                    "deadline": deadline,
+                  });
+
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ],
         );
       },
     );
