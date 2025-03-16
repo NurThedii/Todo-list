@@ -10,8 +10,18 @@ class TodoController extends Controller
 {
     public function index()
     {
-        return response()->json(Todo::with(['category', 'label'])->get());
+        $todos = Todo::with(['category', 'label'])
+            ->orderByRaw("
+                CASE
+                    WHEN status = 'tinggi' THEN 1
+                    WHEN status = 'sedang' THEN 2
+                    WHEN status = 'rendah' THEN 3
+                END
+            ")->get();
+
+        return response()->json($todos);
     }
+
 
     public function store(Request $request)
     {
