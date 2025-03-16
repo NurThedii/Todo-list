@@ -18,7 +18,7 @@ class TodoController extends Controller
         $request->validate([
             'title' => 'required',
             'category_id' => 'required|exists:categories,id',
-            'label_id' => 'required|exists:categories,id',
+            'label_id' => 'required|exists:labels,id',
             'status' => 'required|in:rendah,sedang,tinggi',
             'deadline' => 'required',
         ]);

@@ -15,6 +15,7 @@ class TodoProvider with ChangeNotifier {
   Future<void> fetchTodos() async {
     try {
       final response = await _apiService.getTodos();
+
       print("Response Data: ${response.data}"); // Debugging
 
       if (response.data == null) {
@@ -23,9 +24,6 @@ class TodoProvider with ChangeNotifier {
 
       _todos =
           (response.data as List).map((json) => Todo.fromJson(json)).toList();
-
-      // Jika ingin menyimpan daftar labels secara global
-      labels = _todos.map((todo) => todo.label).toList();
 
       notifyListeners();
     } catch (e) {
