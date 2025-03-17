@@ -133,8 +133,10 @@ class _HomeScreenState extends State<HomeScreen> {
       text: todo.deadline,
     );
 
-    String _selectedCategory = todo.category.id.toString();
-    String _selectedLabel = todo.label.id.toString();
+    // Pastikan category dan label tidak null
+    String _selectedCategory =
+        todo.category?.id?.toString() ?? "0"; // 🛠 Default 0
+    String _selectedLabel = todo.label?.id?.toString() ?? "0"; // 🛠 Default 0
     String _selectedStatus = todo.status;
 
     final categoryProvider = Provider.of<CategoryProvider>(
@@ -161,7 +163,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   decoration: InputDecoration(labelText: "Deskripsi"),
                 ),
                 DropdownButtonFormField<String>(
-                  value: _selectedCategory,
+                  value: _selectedCategory != "0" ? _selectedCategory : null,
+                  hint: Text("Pilih Kategori"),
                   items:
                       categoryProvider.categories.map((category) {
                         return DropdownMenuItem(
@@ -169,10 +172,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Text(category.title),
                         );
                       }).toList(),
-                  onChanged: (value) => _selectedCategory = value!,
+                  onChanged: (value) {
+                    _selectedCategory = value ?? "0";
+                  },
                 ),
                 DropdownButtonFormField<String>(
-                  value: _selectedLabel,
+                  value: _selectedLabel != "0" ? _selectedLabel : null,
+                  hint: Text("Pilih Label"),
                   items:
                       labelProvider.labels.map((label) {
                         return DropdownMenuItem(
@@ -180,7 +186,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Text(label.title),
                         );
                       }).toList(),
-                  onChanged: (value) => _selectedLabel = value!,
+                  onChanged: (value) {
+                    _selectedLabel = value ?? "0";
+                  },
                 ),
                 DropdownButtonFormField<String>(
                   value: _selectedStatus,
@@ -191,7 +199,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Text(status),
                         );
                       }).toList(),
-                  onChanged: (value) => _selectedStatus = value!,
+                  onChanged: (value) {
+                    _selectedStatus = value!;
+                  },
                 ),
                 TextField(
                   controller: _deadlineController,
@@ -210,17 +220,31 @@ class _HomeScreenState extends State<HomeScreen> {
             ElevatedButton(
               child: Text("Simpan"),
               onPressed: () {
-                Provider.of<TodoProvider>(
-                  context,
-                  listen: false,
-                ).updateTodo(todo.id, {
-                  "title": _titleController.text.trim(),
-                  "description": _descriptionController.text.trim(),
-                  "category_id": _selectedCategory,
-                  "label_id": _selectedLabel,
-                  "status": _selectedStatus,
-                  "deadline": _deadlineController.text.trim(),
-                });
+                final int? categoryId = int.tryParse(_selectedCategory);
+                final int? labelId = int.tryParse(_selectedLabel);
+
+                // Pastikan kategori dan label tidak null atau 0
+                if (categoryId == null || categoryId == 0) {
+                  print("⚠ Error: category_id tidak valid.");
+                  return;
+                }
+                if (labelId == null || labelId == 0) {
+                  print("⚠ Error: label_id tidak valid.");
+                  return;
+                }
+
+                Provider.of<TodoProvider>(context, listen: false).updateTodo(
+                  todo.id,
+                  {
+                    "title": _titleController.text.trim(),
+                    "description": _descriptionController.text.trim(),
+                    "category_id": categoryId, // 🔥 Kirim sebagai int
+                    "label_id": labelId, // 🔥 Kirim sebagai int
+                    "status": _selectedStatus,
+                    "deadline": _deadlineController.text.trim(),
+                  },
+                );
+
                 Navigator.of(context).pop();
               },
             ),
@@ -346,16 +370,21 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ElevatedButton(
               child: Text("Simpan"),
-              onPressed: () {
-                Provider.of<LabelProvider>(context, listen: false).updateLabel(
-                  label.id.toString(),
-                  {
-                    // Konversi ID ke String
-                    "title": _controller.text.trim(),
-                  },
-                );
+              onPressed: () async {
+                final updatedTitle = _controller.text.trim();
 
-                Navigator.of(context).pop();
+                if (updatedTitle.isNotEmpty) {
+                  await Provider.of<LabelProvider>(
+                    context,
+                    listen: false,
+                  ).updateLabel(label.id.toString(), {"title": updatedTitle});
+
+                  // Perbarui state agar perubahan langsung terlihat
+                  setState(() {});
+
+                  // Tutup dialog
+                  Navigator.of(context).pop();
+                }
               },
             ),
           ],

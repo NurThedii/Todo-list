@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/api_service.dart';
 import 'home_screen.dart';
+import 'register_screen.dart'; // Tambahkan import register screen
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -162,6 +163,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             _isLoading
                                 ? CircularProgressIndicator(color: Colors.white)
                                 : Text("Login", style: TextStyle(fontSize: 18)),
+                      ),
+                    ),
+                    SizedBox(height: 15),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RegisterScreen(),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        "Belum punya akun? Daftar",
+                        style: TextStyle(color: Colors.blueGrey),
                       ),
                     ),
                   ],

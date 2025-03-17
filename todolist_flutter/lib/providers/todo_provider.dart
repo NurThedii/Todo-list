@@ -49,20 +49,28 @@ class TodoProvider with ChangeNotifier {
 
   Future<void> updateTodo(int id, Map<String, dynamic> data) async {
     try {
+      print("🔄 Mengirim request update todo ID: $id dengan data: $data");
+
       final response = await _apiService.updateTodo(id, data);
 
       if (response.statusCode == 200 && response.data != null) {
+        print("✅ Data dari API: ${response.data}");
+
+        // Cari index todo yang sesuai
         int index = _todos.indexWhere((todo) => todo.id == id);
         if (index != -1) {
-          _todos[index] = Todo.fromJson(response.data);
+          _todos[index] = Todo.fromJson(response.data['data']);
+          print("✅ Todo berhasil diperbarui di state.");
+        } else {
+          print("⚠ Todo tidak ditemukan dalam daftar.");
         }
+
+        notifyListeners(); // 🔥 Pastikan UI diperbarui
       } else {
-        print("Error: Unexpected response format");
+        print("❌ Gagal update todo. Response: ${response.data}");
       }
     } catch (e) {
-      print("Error updating todo: $e");
-    } finally {
-      notifyListeners(); // 🔥 Tetap update UI
+      print("❌ Error updating todo: $e");
     }
   }
 
