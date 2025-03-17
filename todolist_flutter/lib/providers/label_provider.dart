@@ -42,9 +42,14 @@ class LabelProvider with ChangeNotifier {
 
   Future<void> updateLabel(String id, Map<String, dynamic> data) async {
     try {
-      final response = await _apiService.updateLabels(id as int, data);
+      final response = await _apiService.updateLabels(
+        int.parse(id),
+        data,
+      ); // Konversi String ke int dengan benar
       if (response.statusCode == 200) {
-        int index = _labels.indexWhere((label) => label.id == id);
+        int index = _labels.indexWhere(
+          (label) => label.id == int.parse(id),
+        ); // Konversi di sini juga
         if (index != -1) {
           _labels[index] = Label.fromJson(response.data);
           notifyListeners();

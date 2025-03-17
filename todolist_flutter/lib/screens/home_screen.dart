@@ -284,9 +284,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 Provider.of<CategoryProvider>(
                   context,
                   listen: false,
-                ).updateCategory(category.id as String, {
+                ).updateCategory(category.id.toString(), {
                   "title": _controller.text.trim(),
                 });
+
                 Navigator.of(context).pop();
               },
             ),
@@ -346,10 +347,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ElevatedButton(
               child: Text("Simpan"),
               onPressed: () {
-                Provider.of<LabelProvider>(
-                  context,
-                  listen: false,
-                ).updateLabel(label.id as String, {"title": _controller.text.trim()});
+                Provider.of<LabelProvider>(context, listen: false).updateLabel(
+                  label.id.toString(),
+                  {
+                    // Konversi ID ke String
+                    "title": _controller.text.trim(),
+                  },
+                );
+
                 Navigator.of(context).pop();
               },
             ),

@@ -36,7 +36,7 @@ class LabelController extends Controller
         $label = Label::findOrFail($id);
         // Update hanya jika data valid
         $label->update([
-            'title' => 'required',
+            'title' => $request->title,
         ]);
 
         // Return response JSON dengan data yang telah diperbarui

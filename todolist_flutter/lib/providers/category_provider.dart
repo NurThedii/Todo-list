@@ -42,9 +42,21 @@ class CategoryProvider with ChangeNotifier {
 
   Future<void> updateCategory(String id, Map<String, dynamic> data) async {
     try {
-      final response = await _apiService.updateCategories(id as int, data);
+      // Konversi id ke int jika masih dalam bentuk string
+      final int categoryId = int.tryParse(id) ?? -1;
+
+      if (categoryId == -1) {
+        print("Error: Invalid category ID");
+        return;
+      }
+
+      // Kirim request ke API
+      final response = await _apiService.updateCategories(categoryId, data);
+
       if (response.statusCode == 200) {
-        int index = _categories.indexWhere((category) => category.id == id);
+        int index = _categories.indexWhere(
+          (category) => category.id == categoryId,
+        );
         if (index != -1) {
           _categories[index] = Category.fromJson(response.data);
           notifyListeners();

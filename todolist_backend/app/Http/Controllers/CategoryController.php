@@ -28,13 +28,11 @@ class CategoryController extends Controller
     {
         $Categorie = Categorie::findOrFail($id);
 
-        $validatedData = $request->validate([
-            'title' => 'required|string|max:255|unique:Categories,title,' . $id,
-        ]);
 
         // Update hanya jika data valid
-        $Categorie->update($validatedData);
-
+        $Categorie->update([
+            'title' => $request->title,
+        ]);
         // Return response JSON dengan data yang telah diperbarui
         return response()->json([
             'success' => true,
