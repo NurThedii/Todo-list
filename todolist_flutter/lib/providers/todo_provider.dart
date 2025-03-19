@@ -30,22 +30,25 @@ class TodoProvider with ChangeNotifier {
     }
   }
 
-  Future<void> addTodo(Map<String, dynamic> data) async {
-    try {
-      final response = await _apiService.addTodo(data);
+Future<void> addTodo(Map<String, dynamic> data) async {
+  try {
+    final response = await _apiService.addTodo(data);
+    
+    print("🔥 Response dari API: ${response.data}"); // Debugging
 
-      if (response.statusCode == 201 && response.data != null) {
-        Todo newTodo = Todo.fromJson(response.data);
-        _todos.add(newTodo);
-      } else {
-        print("Error: Unexpected response format");
-      }
-    } catch (e) {
-      print("Error adding todo: $e");
-    } finally {
-      notifyListeners(); // 🔥 Tetap update UI meskipun error
+    if (response.statusCode == 201 && response.data != null) {
+      Todo newTodo = Todo.fromJson(response.data);
+      _todos.add(newTodo);
+      print("✅ Todo berhasil ditambahkan: ${newTodo.toJson()}");
+    } else {
+      print("❌ Error: Unexpected response format");
     }
+  } catch (e) {
+    print("❌ Error adding todo: $e");
+  } finally {
+    notifyListeners();
   }
+}
 
   Future<void> updateTodo(int id, Map<String, dynamic> data) async {
     try {

@@ -1,9 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-// http://127.0.0.1:8000/api
 class ApiService {
-  final Dio _dio = Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
+  final Dio _dio = Dio(BaseOptions(baseUrl: "http://127.0.0.1:8000/api"));
   final FlutterSecureStorage _storage = FlutterSecureStorage();
 
   Future<void> setToken(String token) async {

@@ -8,6 +8,7 @@ import '../providers/category_provider.dart';
 import '../providers/label_provider.dart';
 // import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
+import 'package:badges/badges.dart' as badges;
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -37,7 +38,10 @@ class _HomeScreenState extends State<HomeScreen> {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Todo List Maker"),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [Text("Todo List Maker"), _buildDeadlineNotification()],
+          ),
           bottom: TabBar(
             onTap: (index) {
               setState(() {
@@ -70,6 +74,67 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildDeadlineNotification() {
+    final todoProvider = Provider.of<TodoProvider>(context);
+    DateTime now = DateTime.now();
+    DateTime tomorrow = now.add(Duration(days: 1));
+
+    List<Todo> upcomingTodos =
+        todoProvider.todos.where((todo) {
+          DateTime? deadline = DateTime.tryParse(todo.deadline);
+          return deadline != null &&
+              deadline.year == tomorrow.year &&
+              deadline.month == tomorrow.month &&
+              deadline.day == tomorrow.day;
+        }).toList();
+
+    return GestureDetector(
+      onTap: () {
+        _showDeadlineBottomSheet(context, upcomingTodos);
+      },
+      child: badges.Badge(
+        badgeContent: Text(
+          upcomingTodos.length.toString(),
+          style: TextStyle(color: Colors.white),
+        ),
+        child: Icon(Icons.notifications, size: 28),
+      ),
+    );
+  }
+
+  void _showDeadlineBottomSheet(
+    BuildContext context,
+    List<Todo> upcomingTodos,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Tugas Hampir Deadline",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              ...upcomingTodos.map((todo) {
+                return Card(
+                  margin: EdgeInsets.symmetric(vertical: 5),
+                  child: ListTile(
+                    title: Text(todo.title),
+                    subtitle: Text("Deadline: ${todo.deadline}"),
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // ==============================
   // TAB TODOS
   // ==============================
@@ -80,7 +145,6 @@ class _HomeScreenState extends State<HomeScreen> {
           return Center(child: Text("Belum ada tugas! Tambahkan sekarang."));
         }
 
-        // Filter pencarian
         List<Todo> filteredTodos =
             todoProvider.todos.where((todo) {
               String query = searchQuery.toLowerCase();
@@ -91,15 +155,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   todo.status.toLowerCase().contains(query);
             }).toList();
 
-        // Fungsi sorting
+        // Fungsi Sorting
         void sortTable(String field) {
           setState(() {
             if (sortBy == field) {
               ascending = !ascending; // Toggle ascending dan descending
             } else {
               sortBy = field;
-              ascending =
-                  true; // Saat pertama kali pilih kolom, default ascending
+              ascending = true; // Default ascending jika baru memilih field
             }
 
             todoProvider.todos.sort((a, b) {
@@ -165,6 +228,42 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
+            // 🔹 Dropdown untuk Sorting
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("Urutkan Berdasarkan:"),
+                  DropdownButton<String>(
+                    value: sortBy,
+                    items: [
+                      DropdownMenuItem(value: "title", child: Text("Judul")),
+                      DropdownMenuItem(
+                        value: "description",
+                        child: Text("Deskripsi"),
+                      ),
+                      DropdownMenuItem(
+                        value: "category",
+                        child: Text("Kategori"),
+                      ),
+                      DropdownMenuItem(value: "label", child: Text("Label")),
+                      DropdownMenuItem(value: "status", child: Text("Status")),
+                      DropdownMenuItem(
+                        value: "deadline",
+                        child: Text("Deadline"),
+                      ),
+                    ],
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        sortTable(newValue);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+
             // 🔹 Tabel Todo
             Expanded(
               child: LayoutBuilder(
@@ -175,116 +274,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       scrollDirection: Axis.horizontal,
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                          minWidth:
-                              constraints.maxWidth, // Buat tabel responsif
+                          minWidth: constraints.maxWidth, // Tabel responsif
                         ),
                         child: DataTable(
-                          columnSpacing: 15, // Mengurangi jarak antar kolom
-                          headingRowHeight: 40, // Ukuran header lebih kecil
-                          dataRowHeight: 50, // Ukuran baris lebih proporsional
+                          columnSpacing: 15,
+                          headingRowHeight: 40,
+                          dataRowHeight: 50,
                           columns: [
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => sortTable("title"),
-                                child: Row(
-                                  children: [
-                                    Text("Judul"),
-                                    if (sortBy == "title")
-                                      Icon(
-                                        ascending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 14,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => sortTable("description"),
-                                child: Row(
-                                  children: [
-                                    Text("Deskripsi"),
-                                    if (sortBy == "description")
-                                      Icon(
-                                        ascending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 14,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => sortTable("category"),
-                                child: Row(
-                                  children: [
-                                    Text("Kategori"),
-                                    if (sortBy == "category")
-                                      Icon(
-                                        ascending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 14,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => sortTable("label"),
-                                child: Row(
-                                  children: [
-                                    Text("Label"),
-                                    if (sortBy == "label")
-                                      Icon(
-                                        ascending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 14,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => sortTable("status"),
-                                child: Row(
-                                  children: [
-                                    Text("Status"),
-                                    if (sortBy == "status")
-                                      Icon(
-                                        ascending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 14,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: GestureDetector(
-                                onTap: () => sortTable("deadline"),
-                                child: Row(
-                                  children: [
-                                    Text("Deadline"),
-                                    if (sortBy == "deadline")
-                                      Icon(
-                                        ascending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 14,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                            DataColumn(label: Text("Judul")),
+                            DataColumn(label: Text("Deskripsi")),
+                            DataColumn(label: Text("Kategori")),
+                            DataColumn(label: Text("Label")),
+                            DataColumn(label: Text("Status")),
+                            DataColumn(label: Text("Deadline")),
                             DataColumn(label: Text("Aksi")),
                           ],
                           rows:

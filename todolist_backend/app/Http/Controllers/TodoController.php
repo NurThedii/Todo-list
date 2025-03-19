@@ -34,6 +34,7 @@ class TodoController extends Controller
         ]);
 
         $todo = Todo::create($request->all());
+        $todo->load('category', 'label');
         return response()->json($todo, 201);
     }
 
@@ -45,7 +46,7 @@ class TodoController extends Controller
     public function update(Request $request, Todo $todo)
     {
         $todo->update($request->only(['title', 'description', 'category_id', 'label_id', 'status', 'deadline']));
-
+        $todo->load('category', 'label');
         return response()->json([
             'message' => 'Todo berhasil diperbarui',
             'data' => $todo

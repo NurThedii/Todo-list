@@ -31,4 +31,6 @@ class Todo {
       deadline: json["deadline"],
     );
   }
+
+  toJson() {}
 }
