@@ -115,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "Tugas Hampir Deadline",
+                "Deadline besok",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 10),
@@ -138,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==============================
   // TAB TODOS
   // ==============================
+
   Widget _buildTodoTab() {
     return Consumer<TodoProvider>(
       builder: (context, todoProvider, child) {
@@ -155,70 +156,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   todo.status.toLowerCase().contains(query);
             }).toList();
 
-        // Fungsi Sorting
-        void sortTable(String field) {
-          setState(() {
-            if (sortBy == field) {
-              ascending = !ascending; // Toggle ascending dan descending
-            } else {
-              sortBy = field;
-              ascending = true; // Default ascending jika baru memilih field
-            }
-
-            todoProvider.todos.sort((a, b) {
-              dynamic valueA, valueB;
-
-              switch (field) {
-                case "title":
-                  valueA = a.title;
-                  valueB = b.title;
-                  break;
-                case "description":
-                  valueA = a.description ?? "";
-                  valueB = b.description ?? "";
-                  break;
-                case "category":
-                  valueA = a.category.title;
-                  valueB = b.category.title;
-                  break;
-                case "label":
-                  valueA = a.label.title;
-                  valueB = b.label.title;
-                  break;
-                case "status":
-                  Map<String, int> statusOrder = {
-                    "tinggi": 0,
-                    "sedang": 1,
-                    "rendah": 2,
-                  };
-                  valueA = statusOrder[a.status]!;
-                  valueB = statusOrder[b.status]!;
-                  break;
-                case "deadline":
-                  valueA = DateTime.tryParse(a.deadline) ?? DateTime.now();
-                  valueB = DateTime.tryParse(b.deadline) ?? DateTime.now();
-                  break;
-                default:
-                  return 0;
-              }
-
-              return ascending
-                  ? valueA.compareTo(valueB)
-                  : valueB.compareTo(valueA);
-            });
-          });
-        }
-
         return Column(
           children: [
-            // 🔹 Input Pencarian
+            // 🔍 Pencarian
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(10.0),
               child: TextField(
                 decoration: InputDecoration(
                   labelText: "Cari Todo",
                   prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 onChanged: (value) {
                   setState(() {
@@ -228,21 +177,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // 🔹 Dropdown untuk Sorting
+            // 📌 Sorting Dropdown
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Urutkan Berdasarkan:"),
+                  Text("Urutkan:"),
                   DropdownButton<String>(
                     value: sortBy,
+                    style: TextStyle(fontSize: 16, color: Colors.black),
                     items: [
                       DropdownMenuItem(value: "title", child: Text("Judul")),
-                      DropdownMenuItem(
-                        value: "description",
-                        child: Text("Deskripsi"),
-                      ),
                       DropdownMenuItem(
                         value: "category",
                         child: Text("Kategori"),
@@ -256,7 +202,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                     onChanged: (String? newValue) {
                       if (newValue != null) {
-                        sortTable(newValue);
+                        setState(() {
+                          sortTable(newValue);
+                        });
                       }
                     },
                   ),
@@ -264,81 +212,97 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // 🔹 Tabel Todo
+            // 📃 List Todo (Tampilan sebagai Card)
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minWidth: constraints.maxWidth, // Tabel responsif
-                        ),
-                        child: DataTable(
-                          columnSpacing: 15,
-                          headingRowHeight: 40,
-                          dataRowHeight: 50,
-                          columns: [
-                            DataColumn(label: Text("Judul")),
-                            DataColumn(label: Text("Deskripsi")),
-                            DataColumn(label: Text("Kategori")),
-                            DataColumn(label: Text("Label")),
-                            DataColumn(label: Text("Status")),
-                            DataColumn(label: Text("Deadline")),
-                            DataColumn(label: Text("Aksi")),
-                          ],
-                          rows:
-                              filteredTodos.map((todo) {
-                                return DataRow(
-                                  cells: [
-                                    DataCell(Text(todo.title)),
-                                    DataCell(
-                                      SizedBox(
-                                        width: 200,
-                                        child: Text(
-                                          todo.description ??
-                                              "Tidak ada deskripsi",
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ),
-                                    DataCell(Text(todo.category.title)),
-                                    DataCell(Text(todo.label.title)),
-                                    DataCell(Text(todo.status)),
-                                    DataCell(Text(todo.deadline)),
-                                    DataCell(
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.edit,
-                                              color: Colors.blue,
-                                            ),
-                                            onPressed:
-                                                () => _showEditTodoDialog(todo),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.delete,
-                                              color: Colors.red,
-                                            ),
-                                            onPressed:
-                                                () => _showDeleteDialog(
-                                                  () => todoProvider.deleteTodo(
-                                                    todo.id,
-                                                  ),
-                                                ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              }).toList(),
-                        ),
+              child: ListView.builder(
+                padding: EdgeInsets.all(8),
+                itemCount: filteredTodos.length,
+                itemBuilder: (context, index) {
+                  final todo = filteredTodos[index];
+                  return Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 3,
+                    margin: EdgeInsets.symmetric(vertical: 6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Judul dan kategori
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                todo.title,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Chip(
+                                label: Text(todo.category.title),
+                                backgroundColor: Colors.blue.shade100,
+                              ),
+                            ],
+                          ),
+
+                          // Deskripsi
+                          if (todo.description != null)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: Text(
+                                todo.description!,
+                                style: TextStyle(color: Colors.grey.shade700),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+
+                          // Label dan Deadline
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Chip(
+                                label: Text(todo.label.title),
+                                backgroundColor: Colors.green.shade100,
+                              ),
+                              Text(
+                                "🗓 ${todo.deadline}",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          // Status dan Tombol Aksi
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _buildStatusChip(
+                                todo.status,
+                              ), // Status sebagai Chip
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () => _showEditTodoDialog(todo),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed:
+                                        () => _showDeleteDialog(() {
+                                          todoProvider.deleteTodo(todo.id);
+                                        }),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -349,6 +313,82 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+  }
+
+  // Fungsi untuk menampilkan status sebagai Chip
+  Widget _buildStatusChip(String status) {
+    Color color;
+    switch (status) {
+      case "tinggi":
+        color = Colors.red.shade200;
+        break;
+      case "sedang":
+        color = Colors.orange.shade200;
+        break;
+      case "rendah":
+        color = Colors.green.shade200;
+        break;
+      default:
+        color = Colors.grey.shade300;
+    }
+    return Chip(
+      label: Text(status.toUpperCase(), style: TextStyle(fontSize: 12)),
+      backgroundColor: color,
+    );
+  }
+
+  void sortTable(String field) {
+    setState(() {
+      if (sortBy == field) {
+        ascending = !ascending;
+      } else {
+        sortBy = field;
+        ascending = true;
+      }
+
+      // Pastikan todoProvider tersedia dalam context
+      final todoProvider = Provider.of<TodoProvider>(context, listen: false);
+
+      todoProvider.todos.sort((a, b) {
+        dynamic valueA, valueB;
+
+        switch (field) {
+          case "title":
+            valueA = a.title;
+            valueB = b.title;
+            break;
+          case "description":
+            valueA = a.description ?? "";
+            valueB = b.description ?? "";
+            break;
+          case "category":
+            valueA = a.category.title;
+            valueB = b.category.title;
+            break;
+          case "label":
+            valueA = a.label.title;
+            valueB = b.label.title;
+            break;
+          case "status":
+            Map<String, int> statusOrder = {
+              "tinggi": 0,
+              "sedang": 1,
+              "rendah": 2,
+            };
+            valueA = statusOrder[a.status]!;
+            valueB = statusOrder[b.status]!;
+            break;
+          case "deadline":
+            valueA = DateTime.tryParse(a.deadline) ?? DateTime.now();
+            valueB = DateTime.tryParse(b.deadline) ?? DateTime.now();
+            break;
+          default:
+            return 0;
+        }
+
+        return ascending ? valueA.compareTo(valueB) : valueB.compareTo(valueA);
+      });
+    });
   }
 
   // ==============================
