@@ -56,16 +56,44 @@ class TodoProvider with ChangeNotifier {
       if (response.statusCode == 200 && response.data != null) {
         print("✅ Data dari API: ${response.data}");
 
-        // Cari index todo yang sesuai
         int index = _todos.indexWhere((todo) => todo.id == id);
         if (index != -1) {
-          _todos[index] = Todo.fromJson(response.data['data']);
-          print("✅ Todo berhasil diperbarui di state.");
+          Map<String, dynamic> updatedData = response.data['data'];
+
+          print(
+            "🔍 Data sebelum update: ${_todos[index].category.title}, ${_todos[index].label.title}",
+          );
+
+          // Pastikan kategori dan label tidak null
+          Category updatedCategory =
+              updatedData['category'] != null
+                  ? Category.fromJson(updatedData['category'])
+                  : Category(id: -1, title: "Tidak ada kategori");
+
+          Label updatedLabel =
+              updatedData['label'] != null
+                  ? Label.fromJson(updatedData['label'])
+                  : Label(id: -1, title: "Tidak ada label");
+
+          // Update Todo di state
+          _todos[index] = Todo(
+            id: updatedData['id'],
+            title: updatedData['title'],
+            description: updatedData['description'] ?? "Tidak ada deskripsi",
+            category: updatedCategory,
+            label: updatedLabel,
+            status: updatedData['status'],
+            deadline: updatedData['deadline'],
+          );
+
+          print(
+            "✅ Data sesudah update: ${_todos[index].category.title}, ${_todos[index].label.title}",
+          );
+
+          notifyListeners(); // 🔥 Memastikan UI diperbarui
         } else {
           print("⚠ Todo tidak ditemukan dalam daftar.");
         }
-
-        notifyListeners(); // 🔥 Pastikan UI diperbarui
       } else {
         print("❌ Gagal update todo. Response: ${response.data}");
       }

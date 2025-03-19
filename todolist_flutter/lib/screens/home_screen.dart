@@ -6,6 +6,8 @@ import 'package:todolist_flutter/models/todo.dart';
 import '../providers/todo_provider.dart';
 import '../providers/category_provider.dart';
 import '../providers/label_provider.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -13,12 +15,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 0; // Indeks tab yang aktif
+  int _currentIndex = 0; // Active tab index
   String searchQuery = "";
+  bool ascending = true; // Status urutan (true = naik, false = turun)
+  String sortBy = "status"; // Default sort by status
 
   @override
   void initState() {
     super.initState();
+
     Future.microtask(() {
       Provider.of<TodoProvider>(context, listen: false).fetchTodos();
       Provider.of<CategoryProvider>(context, listen: false).fetchCategories();
@@ -74,46 +79,271 @@ class _HomeScreenState extends State<HomeScreen> {
         if (todoProvider.todos.isEmpty) {
           return Center(child: Text("Belum ada tugas! Tambahkan sekarang."));
         }
-        return ListView.builder(
-          itemCount: todoProvider.todos.length,
-          itemBuilder: (context, index) {
-            final todo = todoProvider.todos[index];
-            return Card(
-              margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-              child: ListTile(
-                title: Text(
-                  todo.title,
-                  style: TextStyle(fontWeight: FontWeight.bold),
+
+        // Filter pencarian
+        List<Todo> filteredTodos =
+            todoProvider.todos.where((todo) {
+              String query = searchQuery.toLowerCase();
+              return todo.title.toLowerCase().contains(query) ||
+                  (todo.description ?? '').toLowerCase().contains(query) ||
+                  todo.category.title.toLowerCase().contains(query) ||
+                  todo.label.title.toLowerCase().contains(query) ||
+                  todo.status.toLowerCase().contains(query);
+            }).toList();
+
+        // Fungsi sorting
+        void sortTable(String field) {
+          setState(() {
+            if (sortBy == field) {
+              ascending = !ascending; // Toggle ascending dan descending
+            } else {
+              sortBy = field;
+              ascending =
+                  true; // Saat pertama kali pilih kolom, default ascending
+            }
+
+            todoProvider.todos.sort((a, b) {
+              dynamic valueA, valueB;
+
+              switch (field) {
+                case "title":
+                  valueA = a.title;
+                  valueB = b.title;
+                  break;
+                case "description":
+                  valueA = a.description ?? "";
+                  valueB = b.description ?? "";
+                  break;
+                case "category":
+                  valueA = a.category.title;
+                  valueB = b.category.title;
+                  break;
+                case "label":
+                  valueA = a.label.title;
+                  valueB = b.label.title;
+                  break;
+                case "status":
+                  Map<String, int> statusOrder = {
+                    "tinggi": 0,
+                    "sedang": 1,
+                    "rendah": 2,
+                  };
+                  valueA = statusOrder[a.status]!;
+                  valueB = statusOrder[b.status]!;
+                  break;
+                case "deadline":
+                  valueA = DateTime.tryParse(a.deadline) ?? DateTime.now();
+                  valueB = DateTime.tryParse(b.deadline) ?? DateTime.now();
+                  break;
+                default:
+                  return 0;
+              }
+
+              return ascending
+                  ? valueA.compareTo(valueB)
+                  : valueB.compareTo(valueA);
+            });
+          });
+        }
+
+        return Column(
+          children: [
+            // 🔹 Input Pencarian
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  labelText: "Cari Todo",
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
                 ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Deskripsi: ${todo.description}"),
-                    Text("Label: ${todo.label.title}"),
-                    Text("Category: ${todo.category.title}"),
-                    Text("Status: ${todo.status}"),
-                    Text("Deadline: ${todo.deadline}"),
-                  ],
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.edit, color: Colors.blue),
-                      onPressed: () => _showEditTodoDialog(todo),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.delete, color: Colors.red),
-                      onPressed:
-                          () => _showDeleteDialog(
-                            () => todoProvider.deleteTodo(todo.id),
-                          ),
-                    ),
-                  ],
-                ),
+                onChanged: (value) {
+                  setState(() {
+                    searchQuery = value;
+                  });
+                },
               ),
-            );
-          },
+            ),
+
+            // 🔹 Tabel Todo
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minWidth:
+                              constraints.maxWidth, // Buat tabel responsif
+                        ),
+                        child: DataTable(
+                          columnSpacing: 15, // Mengurangi jarak antar kolom
+                          headingRowHeight: 40, // Ukuran header lebih kecil
+                          dataRowHeight: 50, // Ukuran baris lebih proporsional
+                          columns: [
+                            DataColumn(
+                              label: GestureDetector(
+                                onTap: () => sortTable("title"),
+                                child: Row(
+                                  children: [
+                                    Text("Judul"),
+                                    if (sortBy == "title")
+                                      Icon(
+                                        ascending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
+                                        size: 14,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: GestureDetector(
+                                onTap: () => sortTable("description"),
+                                child: Row(
+                                  children: [
+                                    Text("Deskripsi"),
+                                    if (sortBy == "description")
+                                      Icon(
+                                        ascending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
+                                        size: 14,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: GestureDetector(
+                                onTap: () => sortTable("category"),
+                                child: Row(
+                                  children: [
+                                    Text("Kategori"),
+                                    if (sortBy == "category")
+                                      Icon(
+                                        ascending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
+                                        size: 14,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: GestureDetector(
+                                onTap: () => sortTable("label"),
+                                child: Row(
+                                  children: [
+                                    Text("Label"),
+                                    if (sortBy == "label")
+                                      Icon(
+                                        ascending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
+                                        size: 14,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: GestureDetector(
+                                onTap: () => sortTable("status"),
+                                child: Row(
+                                  children: [
+                                    Text("Status"),
+                                    if (sortBy == "status")
+                                      Icon(
+                                        ascending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
+                                        size: 14,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: GestureDetector(
+                                onTap: () => sortTable("deadline"),
+                                child: Row(
+                                  children: [
+                                    Text("Deadline"),
+                                    if (sortBy == "deadline")
+                                      Icon(
+                                        ascending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
+                                        size: 14,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            DataColumn(label: Text("Aksi")),
+                          ],
+                          rows:
+                              filteredTodos.map((todo) {
+                                return DataRow(
+                                  cells: [
+                                    DataCell(Text(todo.title)),
+                                    DataCell(
+                                      SizedBox(
+                                        width: 200,
+                                        child: Text(
+                                          todo.description ??
+                                              "Tidak ada deskripsi",
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(Text(todo.category.title)),
+                                    DataCell(Text(todo.label.title)),
+                                    DataCell(Text(todo.status)),
+                                    DataCell(Text(todo.deadline)),
+                                    DataCell(
+                                      Row(
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.edit,
+                                              color: Colors.blue,
+                                            ),
+                                            onPressed:
+                                                () => _showEditTodoDialog(todo),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.delete,
+                                              color: Colors.red,
+                                            ),
+                                            onPressed:
+                                                () => _showDeleteDialog(
+                                                  () => todoProvider.deleteTodo(
+                                                    todo.id,
+                                                  ),
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         );
       },
     );
@@ -133,11 +363,11 @@ class _HomeScreenState extends State<HomeScreen> {
       text: todo.deadline,
     );
 
-    // Pastikan category dan label tidak null
-    String _selectedCategory =
-        todo.category?.id?.toString() ?? "0"; // 🛠 Default 0
-    String _selectedLabel = todo.label?.id?.toString() ?? "0"; // 🛠 Default 0
+    // Make sure category and label are not null
+    String _selectedCategory = todo.category?.id?.toString() ?? "0";
+    String _selectedLabel = todo.label?.id?.toString() ?? "0";
     String _selectedStatus = todo.status;
+    DateTime? _selectedDate = DateTime.tryParse(todo.deadline);
 
     final categoryProvider = Provider.of<CategoryProvider>(
       context,
@@ -156,15 +386,31 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 TextField(
                   controller: _titleController,
-                  decoration: InputDecoration(labelText: "Nama Todo"),
+                  decoration: InputDecoration(
+                    labelText: "Nama Todo",
+                    border: OutlineInputBorder(),
+                  ),
                 ),
+                SizedBox(height: 10),
                 TextField(
                   controller: _descriptionController,
-                  decoration: InputDecoration(labelText: "Deskripsi"),
+                  decoration: InputDecoration(
+                    labelText: "Deskripsi",
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
                 ),
+                SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   value: _selectedCategory != "0" ? _selectedCategory : null,
                   hint: Text("Pilih Kategori"),
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 15,
+                    ),
+                  ),
                   items:
                       categoryProvider.categories.map((category) {
                         return DropdownMenuItem(
@@ -176,9 +422,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     _selectedCategory = value ?? "0";
                   },
                 ),
+                SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   value: _selectedLabel != "0" ? _selectedLabel : null,
                   hint: Text("Pilih Label"),
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 15,
+                    ),
+                  ),
                   items:
                       labelProvider.labels.map((label) {
                         return DropdownMenuItem(
@@ -190,8 +444,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     _selectedLabel = value ?? "0";
                   },
                 ),
+                SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   value: _selectedStatus,
+                  decoration: InputDecoration(
+                    labelText: "Status",
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 15,
+                    ),
+                  ),
                   items:
                       ['rendah', 'sedang', 'tinggi'].map((status) {
                         return DropdownMenuItem(
@@ -203,10 +466,32 @@ class _HomeScreenState extends State<HomeScreen> {
                     _selectedStatus = value!;
                   },
                 ),
-                TextField(
-                  controller: _deadlineController,
-                  decoration: InputDecoration(
-                    labelText: "Deadline (YYYY-MM-DD)",
+                SizedBox(height: 10),
+                InkWell(
+                  onTap: () async {
+                    DateTime? pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedDate ?? DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2100),
+                    );
+
+                    if (pickedDate != null) {
+                      setState(() {
+                        _selectedDate = pickedDate;
+                        _deadlineController.text = DateFormat(
+                          'yyyy-MM-dd',
+                        ).format(pickedDate);
+                      });
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: "Deadline",
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                    child: Text(_deadlineController.text),
                   ),
                 ),
               ],
@@ -223,27 +508,33 @@ class _HomeScreenState extends State<HomeScreen> {
                 final int? categoryId = int.tryParse(_selectedCategory);
                 final int? labelId = int.tryParse(_selectedLabel);
 
-                // Pastikan kategori dan label tidak null atau 0
+                // Make sure category and label are not null or 0
                 if (categoryId == null || categoryId == 0) {
-                  print("⚠ Error: category_id tidak valid.");
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Kategori tidak valid")),
+                  );
                   return;
                 }
                 if (labelId == null || labelId == 0) {
-                  print("⚠ Error: label_id tidak valid.");
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text("Label tidak valid")));
                   return;
                 }
 
-                Provider.of<TodoProvider>(context, listen: false).updateTodo(
-                  todo.id,
-                  {
-                    "title": _titleController.text.trim(),
-                    "description": _descriptionController.text.trim(),
-                    "category_id": categoryId, // 🔥 Kirim sebagai int
-                    "label_id": labelId, // 🔥 Kirim sebagai int
-                    "status": _selectedStatus,
-                    "deadline": _deadlineController.text.trim(),
-                  },
-                );
+                Provider.of<TodoProvider>(
+                  context,
+                  listen: false,
+                ).updateTodo(todo.id, {
+                  "title": _titleController.text.trim(),
+                  "description": _descriptionController.text.trim(),
+                  "category_id": categoryId,
+                  "label_id": labelId,
+                  "status": _selectedStatus,
+                  "deadline": _deadlineController.text.trim(),
+                });
+
+                if (_selectedDate != null) {}
 
                 Navigator.of(context).pop();
               },
@@ -273,6 +564,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 () => categoryProvider.deleteCategory(category.id),
               ),
               onEdit: () => _showEditCategoryDialog(category),
+              color: Colors.purple.shade100,
             );
           },
         );
@@ -295,7 +587,10 @@ class _HomeScreenState extends State<HomeScreen> {
           title: Text("Edit Category"),
           content: TextField(
             controller: _controller,
-            decoration: InputDecoration(labelText: "Nama Category"),
+            decoration: InputDecoration(
+              labelText: "Nama Category",
+              border: OutlineInputBorder(),
+            ),
           ),
           actions: [
             TextButton(
@@ -339,6 +634,7 @@ class _HomeScreenState extends State<HomeScreen> {
               () =>
                   _showDeleteDialog(() => labelProvider.deleteLabel(label.id)),
               onEdit: () => _showEditLabelDialog(label),
+              color: Colors.blue.shade100,
             );
           },
         );
@@ -361,7 +657,10 @@ class _HomeScreenState extends State<HomeScreen> {
           title: Text("Edit Label"),
           content: TextField(
             controller: _controller,
-            decoration: InputDecoration(labelText: "Nama Label"),
+            decoration: InputDecoration(
+              labelText: "Nama Label",
+              border: OutlineInputBorder(),
+            ),
           ),
           actions: [
             TextButton(
@@ -379,10 +678,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     listen: false,
                   ).updateLabel(label.id.toString(), {"title": updatedTitle});
 
-                  // Perbarui state agar perubahan langsung terlihat
+                  // Update state to see changes immediately
                   setState(() {});
 
-                  // Tutup dialog
+                  // Close dialog
                   Navigator.of(context).pop();
                 }
               },
@@ -400,10 +699,17 @@ class _HomeScreenState extends State<HomeScreen> {
     String title,
     VoidCallback onDelete, {
     VoidCallback? onEdit,
+    Color? color,
   }) {
     return Card(
       margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: color ?? Colors.grey.shade200,
+          child: Text(title.isNotEmpty ? title[0].toUpperCase() : "?"),
+        ),
         title: Text(title),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -439,6 +745,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () => Navigator.of(context).pop(),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: Text("Hapus"),
               onPressed: () {
                 onConfirm();
@@ -460,6 +767,7 @@ class _HomeScreenState extends State<HomeScreen> {
         TextEditingController();
     final TextEditingController _deadlineController = TextEditingController();
 
+    DateTime? _selectedDeadline;
     String? _selectedCategory;
     String? _selectedLabel;
     String _selectedStatus = "rendah"; // Default status
@@ -481,14 +789,30 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 TextField(
                   controller: _titleController,
-                  decoration: InputDecoration(labelText: "Nama Todo"),
+                  decoration: InputDecoration(
+                    labelText: "Nama Todo",
+                    border: OutlineInputBorder(),
+                  ),
                 ),
+                SizedBox(height: 10),
                 TextField(
                   controller: _descriptionController,
-                  decoration: InputDecoration(labelText: "Deskripsi"),
+                  decoration: InputDecoration(
+                    labelText: "Deskripsi",
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
                 ),
+                SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  decoration: InputDecoration(labelText: "Pilih Kategori"),
+                  decoration: InputDecoration(
+                    labelText: "Pilih Kategori",
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 15,
+                    ),
+                  ),
                   value: _selectedCategory,
                   items:
                       categoryProvider.categories.map((category) {
@@ -501,8 +825,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     _selectedCategory = value;
                   },
                 ),
+                SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  decoration: InputDecoration(labelText: "Pilih Label"),
+                  decoration: InputDecoration(
+                    labelText: "Pilih Label",
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 15,
+                    ),
+                  ),
                   value: _selectedLabel,
                   items:
                       labelProvider.labels.map((label) {
@@ -515,8 +847,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     _selectedLabel = value;
                   },
                 ),
+                SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  decoration: InputDecoration(labelText: "Status"),
+                  decoration: InputDecoration(
+                    labelText: "Status",
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 15,
+                    ),
+                  ),
                   value: _selectedStatus,
                   items:
                       ['rendah', 'sedang', 'tinggi'].map((status) {
@@ -529,10 +869,36 @@ class _HomeScreenState extends State<HomeScreen> {
                     _selectedStatus = value!;
                   },
                 ),
-                TextField(
-                  controller: _deadlineController,
-                  decoration: InputDecoration(
-                    labelText: "Deadline (YYYY-MM-DD)",
+                SizedBox(height: 10),
+                InkWell(
+                  onTap: () async {
+                    DateTime? pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2100),
+                    );
+
+                    if (pickedDate != null) {
+                      setState(() {
+                        _selectedDeadline = pickedDate;
+                        _deadlineController.text = DateFormat(
+                          'yyyy-MM-dd',
+                        ).format(pickedDate);
+                      });
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: "Deadline",
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                    child: Text(
+                      _selectedDeadline == null
+                          ? "Pilih Deadline"
+                          : DateFormat('yyyy-MM-dd').format(_selectedDeadline!),
+                    ),
                   ),
                 ),
               ],
@@ -548,22 +914,49 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {
                 final String title = _titleController.text.trim();
                 final String description = _descriptionController.text.trim();
-                final String deadline = _deadlineController.text.trim();
 
-                if (title.isNotEmpty &&
-                    _selectedCategory != null &&
-                    _selectedLabel != null) {
-                  Provider.of<TodoProvider>(context, listen: false).addTodo({
-                    "title": title,
-                    "description": description,
-                    "category_id": _selectedCategory,
-                    "label_id": _selectedLabel,
-                    "status": _selectedStatus,
-                    "deadline": deadline,
-                  });
-
-                  Navigator.of(context).pop();
+                if (title.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Judul tidak boleh kosong")),
+                  );
+                  return;
                 }
+
+                if (_selectedCategory == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Pilih kategori terlebih dahulu")),
+                  );
+                  return;
+                }
+
+                if (_selectedLabel == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Pilih label terlebih dahulu")),
+                  );
+                  return;
+                }
+
+                if (_selectedDeadline == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Pilih deadline terlebih dahulu")),
+                  );
+                  return;
+                }
+
+                String formattedDeadline = DateFormat(
+                  'yyyy-MM-dd',
+                ).format(_selectedDeadline!);
+
+                Provider.of<TodoProvider>(context, listen: false).addTodo({
+                  "title": title,
+                  "description": description,
+                  "category_id": _selectedCategory,
+                  "label_id": _selectedLabel,
+                  "status": _selectedStatus,
+                  "deadline": formattedDeadline,
+                });
+
+                Navigator.of(context).pop();
               },
             ),
           ],
@@ -572,6 +965,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ==============================
+  // MODAL TAMBAH CATEGORY
+  // ==============================
   void _showAddCategoryDialog() {
     final TextEditingController _controller = TextEditingController();
 
@@ -582,7 +978,10 @@ class _HomeScreenState extends State<HomeScreen> {
           title: Text("Tambah Category"),
           content: TextField(
             controller: _controller,
-            decoration: InputDecoration(labelText: "Nama Category"),
+            decoration: InputDecoration(
+              labelText: "Nama Category",
+              border: OutlineInputBorder(),
+            ),
           ),
           actions: [
             TextButton(
@@ -599,6 +998,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     listen: false,
                   ).addCategory({"title": title});
                   Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Nama kategori tidak boleh kosong")),
+                  );
                 }
               },
             ),
@@ -621,7 +1024,10 @@ class _HomeScreenState extends State<HomeScreen> {
           title: Text("Tambah Label"),
           content: TextField(
             controller: _controller,
-            decoration: InputDecoration(labelText: "Nama Label"),
+            decoration: InputDecoration(
+              labelText: "Nama Label",
+              border: OutlineInputBorder(),
+            ),
           ),
           actions: [
             TextButton(
@@ -638,6 +1044,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     listen: false,
                   ).addLabel({"title": title});
                   Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Nama label tidak boleh kosong")),
+                  );
                 }
               },
             ),
