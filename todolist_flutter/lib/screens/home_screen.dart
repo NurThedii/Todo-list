@@ -20,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String searchQuery = "";
   bool ascending = true; // Status urutan (true = naik, false = turun)
   String sortBy = "status"; // Default sort by status
-
+  String selectedStatus = "Semua";
   @override
   void initState() {
     super.initState();
@@ -146,14 +146,26 @@ class _HomeScreenState extends State<HomeScreen> {
           return Center(child: Text("Belum ada tugas! Tambahkan sekarang."));
         }
 
+        // 🔎 Filter berdasarkan pencarian & status
         List<Todo> filteredTodos =
             todoProvider.todos.where((todo) {
               String query = searchQuery.toLowerCase();
-              return todo.title.toLowerCase().contains(query) ||
+
+              // 🔍 Pencarian di semua field
+              bool matchesQuery =
+                  todo.title.toLowerCase().contains(query) ||
                   (todo.description ?? '').toLowerCase().contains(query) ||
+                  todo.deadline.toLowerCase().contains(query) ||
+                  todo.status.toLowerCase().contains(query) ||
                   todo.category.title.toLowerCase().contains(query) ||
-                  todo.label.title.toLowerCase().contains(query) ||
-                  todo.status.toLowerCase().contains(query);
+                  todo.label.title.toLowerCase().contains(query);
+
+              // 🎯 Filter Status
+              bool matchesStatus =
+                  selectedStatus == "Semua" ||
+                  todo.status.toLowerCase() == selectedStatus.toLowerCase();
+
+              return matchesQuery && matchesStatus;
             }).toList();
 
         return Column(
@@ -177,33 +189,26 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // 📌 Sorting Dropdown
+            // 📌 Dropdown untuk Filter Status
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Urutkan:"),
+                  Text("Filter berdasarkan status:"),
                   DropdownButton<String>(
-                    value: sortBy,
+                    value: selectedStatus,
                     style: TextStyle(fontSize: 16, color: Colors.black),
                     items: [
-                      DropdownMenuItem(value: "title", child: Text("Judul")),
-                      DropdownMenuItem(
-                        value: "category",
-                        child: Text("Kategori"),
-                      ),
-                      DropdownMenuItem(value: "label", child: Text("Label")),
-                      DropdownMenuItem(value: "status", child: Text("Status")),
-                      DropdownMenuItem(
-                        value: "deadline",
-                        child: Text("Deadline"),
-                      ),
+                      DropdownMenuItem(value: "Semua", child: Text("Semua")),
+                      DropdownMenuItem(value: "rendah", child: Text("Rendah")),
+                      DropdownMenuItem(value: "sedang", child: Text("Sedang")),
+                      DropdownMenuItem(value: "tinggi", child: Text("Tinggi")),
                     ],
                     onChanged: (String? newValue) {
                       if (newValue != null) {
                         setState(() {
-                          sortTable(newValue);
+                          selectedStatus = newValue;
                         });
                       }
                     },
